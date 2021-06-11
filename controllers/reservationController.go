@@ -72,6 +72,51 @@ func CreateReservation(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+func GetReservationOfUser(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Create Reservation")
+	w.Header().Add("content-type", "application")
+
+	parms := mux.Vars(r)
+	userUuid, _ := parms["useruuid"]
+
+	initReservationCollection()
+
+	result, err := reservationCollection.Find(database.Ctx, bson.M{"user_uuid": userUuid})
+	if err != nil {
+		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	var reservations []models.Reservation
+	if err := result.All(database.Ctx, &reservations); err != nil {
+		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	json.NewEncoder(w).Encode(reservations)
+
+}
+
+func DeleteReservation(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("DeleteReservation")
+	w.Header().Add("content-type", "application")
+
+	params := mux.Vars(r)
+	user, err := GetCurrentUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	reservationUUID, _ := params["uuid"]
+	initReservationCollection()
+	result, err := reservationCollection.DeleteOne(database.Ctx, bson.M{"_id": reservationUUID, "user_uuid": user.UUID})
+	if err != nil {
+		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	json.NewEncoder(w).Encode(result)
+}
+
 func GetReservationOfDate(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get Reservation Of Date")
 	w.Header().Add("content-type", "application")
@@ -101,7 +146,6 @@ func GetReservationOfDate(w http.ResponseWriter, r *http.Request) {
 
 func FindReservationBetweenTime(workspaceUUID string, start int64, end int64) ([]models.Reservation, bool, error) {
 	initReservationCollection()
-	fmt.Println(workspaceUUID)
 	result, err := reservationCollection.Find(database.Ctx,
 		bson.M{
 			"$and": []interface{}{

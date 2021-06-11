@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
@@ -111,7 +112,7 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 
 	initUserCollection()
 	// get all Users form Collection
-	result, err := usersCollection.Find(database.Ctx, bson.M{})
+	result, err := usersCollection.Find(database.Ctx, bson.M{}, options.Find().SetProjection(bson.M{"password": 0}))
 	if err != nil {
 		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -138,7 +139,6 @@ func SetRole(w http.ResponseWriter, r *http.Request) {
 
 	//Decode body to user
 	err := json.NewDecoder(r.Body).Decode(&user)
-	fmt.Println(user)
 	if err != nil {
 		handler.HttpErrorResponse(w, http.StatusBadGateway, err.Error())
 		return

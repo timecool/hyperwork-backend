@@ -20,6 +20,7 @@ const baseApiPattern = "/api/v1"
 const userPattern = baseApiPattern + "/user"
 const roomPattern = baseApiPattern + "/room"
 const reservationPattern = baseApiPattern + "/reservation"
+const workspacePattern = baseApiPattern + "/workspace"
 
 func getRoutes() []route {
 	return []route{
@@ -32,7 +33,7 @@ func getRoutes() []route {
 		},
 		{
 			Name:        "SetUserRoles",
-			Method:      http.MethodPatch,
+			Method:      http.MethodPut,
 			Pattern:     userPattern + "/{uuid}/role",
 			HandlerFunc: controllers.SetRole,
 			Role:        models.RoleAdmin,
@@ -102,7 +103,7 @@ func getRoutes() []route {
 		},
 		{
 			Name:        "UpdateRoomMap",
-			Method:      http.MethodPatch,
+			Method:      http.MethodPut,
 			Pattern:     roomPattern + "/{uuid}",
 			HandlerFunc: controllers.UpdateRoom,
 			Role:        models.RoleAdmin,
@@ -119,6 +120,27 @@ func getRoutes() []route {
 			Method:      http.MethodGet,
 			Pattern:     reservationPattern + "/{workspaceuuid}",
 			HandlerFunc: controllers.GetReservationOfDate,
+			Role:        models.RoleMember,
+		},
+		{
+			Name:        "GetReservationOfUser",
+			Method:      http.MethodGet,
+			Pattern:     userPattern + "/reservation/{useruuid}",
+			HandlerFunc: controllers.GetReservationOfUser,
+			Role:        models.RoleMember,
+		},
+		{
+			Name:        "DeleteReservation",
+			Method:      http.MethodDelete,
+			Pattern:     reservationPattern + "/{uuid}",
+			HandlerFunc: controllers.DeleteReservation,
+			Role:        models.RoleNone, //Check in function
+		},
+		{
+			Name:        "GetWorkspace",
+			Method:      http.MethodGet,
+			Pattern:     workspacePattern + "/{roomuuid}/{workspaceuuid}",
+			HandlerFunc: controllers.GetWorkspace,
 			Role:        models.RoleMember,
 		},
 	}

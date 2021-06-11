@@ -69,7 +69,6 @@ func GetRoom(w http.ResponseWriter, r *http.Request) {
 	roomId, _ := params["uuid"]
 
 	result, isFind, err := GetRoomById(roomId)
-	fmt.Println(result)
 	if err != nil {
 		handler.HttpErrorResponse(w, http.StatusBadGateway, err.Error())
 		return

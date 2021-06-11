@@ -2,47 +2,45 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"net/http"
 	"timecool/hyperwork/database"
+	"timecool/hyperwork/handler"
 	"timecool/hyperwork/models"
 )
 
-var workspaceCollection *mongo.Collection
-
-func DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Delete Workspace")
+func GetWorkspace(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Get Workspace")
 	w.Header().Add("content-type", "application")
-
 	params := mux.Vars(r)
-	roomId, _ := params["uuid"]
+	roomUUID, _ := params["roomuuid"]
+	workspaceUUID, _ := params["workspaceuuid"]
 
-	opts := options.Update().SetUpsert(true)
-	filter := bson.D{{"_id", roomId}}
-	update := bson.D{{"$set", bson.D{{"delete", true}}}}
-
-	result, err := workspaceCollection.UpdateOne(database.Ctx, filter, update, opts)
+	workspace, err := GetWorkspaceByUUID(roomUUID, workspaceUUID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		handler.HttpErrorResponse(w, http.StatusNotFound, err.Error())
 		return
 	}
-	json.NewEncoder(w).Encode(result)
+	json.NewEncoder(w).Encode(workspace)
 }
 
-func GetWorkspaceByUUID(roomUUID string, workspaceUUID string) {
+func GetWorkspaceByUUID(roomUUID string, workspaceUUID string) (models.Workspace, error) {
 
 	var room models.Room
+	var workspace models.Workspace
 	initRoomCollection()
 	// find room on UUID
-
-	_ = roomCollection.FindOne(database.Ctx, bson.M{"_id": roomUUID, "workspaces._id": workspaceUUID},
+	err := roomCollection.FindOne(database.Ctx, bson.M{"_id": roomUUID, "workspaces._id": workspaceUUID},
 		options.FindOne().SetProjection(bson.M{"workspaces": 1})).Decode(&room)
-	fmt.Println(room.Workspaces[0])
-	if room.Workspaces == nil {
+	if err != nil {
+		return workspace, err
 	}
-	fmt.Println(workspaceUUID)
+	if room.Workspaces == nil {
+		return workspace, errors.New("No workspace found")
+	}
+	return room.Workspaces[0], err
 }

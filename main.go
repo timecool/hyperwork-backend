@@ -22,7 +22,7 @@ func main() {
 		//Settings Header Cors
 		handlers.CORS(
 			handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
-			handlers.AllowedMethods([]string{"GET", "POST", "DELETE", "PATCH"}),
+			handlers.AllowedMethods([]string{"GET", "POST", "DELETE", "PUT"}),
 			handlers.AllowCredentials(),
 			handlers.AllowedOrigins([]string{util.GetEnvVariable("SERVER_URL")}),
 		)(r)))
