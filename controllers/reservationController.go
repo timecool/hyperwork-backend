@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"net/http"
 	"strconv"
 	"time"
@@ -59,10 +60,21 @@ func CreateReservation(w http.ResponseWriter, r *http.Request) {
 	}
 	user, _ := GetCurrentUser(r)
 	reservation.UserUUID = user.UUID
+	//Save Names in Object
+	roomName, workspaceName := getRoomAndWorkspaceName(reservation.RoomUUID, reservation.WorkspaceUUID)
+	if roomName == "" {
+		handler.HttpErrorResponse(w, http.StatusNotFound, "Room Name not found")
+		return
+	}
+	if workspaceName == "" {
+		handler.HttpErrorResponse(w, http.StatusNotFound, "Workspace Name not found")
+		return
+	}
+	reservation.RoomName = roomName
+	reservation.WorkspaceName = workspaceName
 	reservation.UUID = uuid.New().String()
 
 	//Save User in Collection User
-
 	result, err := reservationCollection.InsertOne(database.Ctx, reservation)
 	if err != nil {
 		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
@@ -73,15 +85,23 @@ func CreateReservation(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetReservationOfUser(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Create Reservation")
+	fmt.Println("Get Reservation Of User")
 	w.Header().Add("content-type", "application")
 
 	parms := mux.Vars(r)
 	userUuid, _ := parms["useruuid"]
 
 	initReservationCollection()
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
 
-	result, err := reservationCollection.Find(database.Ctx, bson.M{"user_uuid": userUuid})
+	var result *mongo.Cursor
+	filter := bson.M{"$and": []interface{}{
+		bson.M{"user_uuid": userUuid},
+		bson.M{"end_date": bson.M{"$gte": time.Now().Unix()}},
+	}}
+
+	result, err = reservationCollection.Find(database.Ctx, filter, options.Find().SetSort(bson.D{{"start_date", 1}}).SetLimit(int64(limit)))
+
 	if err != nil {
 		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
 		return

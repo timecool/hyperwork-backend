@@ -111,7 +111,7 @@ func getRoutes() []route {
 		{
 			Name:        "CreateReservation",
 			Method:      http.MethodPost,
-			Pattern:     reservationPattern + "/{workspaceuuid}",
+			Pattern:     reservationPattern,
 			HandlerFunc: controllers.CreateReservation,
 			Role:        models.RoleMember,
 		},

@@ -153,3 +153,18 @@ func GetRoomById(id string) (models.Room, bool, error) {
 	err := roomCollection.FindOne(database.Ctx, bson.M{"_id": id}).Decode(&room)
 	return room, len(room.UUID) != 0 && !room.Delete, err
 }
+
+func getRoomAndWorkspaceName(roomUUID string, workspaceUUID string) (string, string) {
+	var room models.Room
+	initRoomCollection()
+	// find room on UUID
+	err := roomCollection.FindOne(database.Ctx, bson.M{"_id": roomUUID, "workspaces._id": workspaceUUID},
+		options.FindOne().SetProjection(bson.M{"workspaces.name": 1, "name": 1})).Decode(&room)
+	if err != nil {
+		return "", ""
+	}
+	if room.Workspaces == nil {
+		return "", ""
+	}
+	return room.Name, room.Workspaces[0].Name
+}
