@@ -67,7 +67,6 @@ func CreateToken(user models.User) (string, error) {
 	atClaims["uuid"] = user.UUID
 	atClaims["name"] = user.Name
 	atClaims["email"] = user.Email
-	atClaims["last_place"] = user.LastPlace
 	atClaims["exp"] = time.Now().Add(time.Hour * 2)
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
 	token, err := at.SignedString([]byte(util.GetEnvVariable("SECRETKEY")))

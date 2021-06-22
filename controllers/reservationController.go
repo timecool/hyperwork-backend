@@ -26,7 +26,7 @@ func initReservationCollection() {
 
 func CreateReservation(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Create Reservation")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 
 	var reservation models.Reservation
 
@@ -86,19 +86,32 @@ func CreateReservation(w http.ResponseWriter, r *http.Request) {
 
 func GetReservationOfUser(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get Reservation Of User")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 
 	parms := mux.Vars(r)
 	userUuid, _ := parms["useruuid"]
 
 	initReservationCollection()
 	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	startDate, err := strconv.Atoi(r.URL.Query().Get("s"))
+	endDate, err := strconv.Atoi(r.URL.Query().Get("e"))
 
+	var filter bson.M
+	if int64(endDate) != 0 && int64(startDate) != 0 {
+		filter = bson.M{"$and": []interface{}{
+			bson.M{
+				"$and": []interface{}{
+					bson.M{"user_uuid": userUuid},
+					getTimeFilter(int64(startDate), int64(endDate)),
+				}},
+		}}
+	} else {
+		filter = bson.M{"$and": []interface{}{
+			bson.M{"user_uuid": userUuid},
+			bson.M{"end_date": bson.M{"$gte": time.Now().Unix()}},
+		}}
+	}
 	var result *mongo.Cursor
-	filter := bson.M{"$and": []interface{}{
-		bson.M{"user_uuid": userUuid},
-		bson.M{"end_date": bson.M{"$gte": time.Now().Unix()}},
-	}}
 
 	result, err = reservationCollection.Find(database.Ctx, filter, options.Find().SetSort(bson.D{{"start_date", 1}}).SetLimit(int64(limit)))
 
@@ -119,7 +132,7 @@ func GetReservationOfUser(w http.ResponseWriter, r *http.Request) {
 
 func DeleteReservation(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("DeleteReservation")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 
 	params := mux.Vars(r)
 	user, err := GetCurrentUser(r)
@@ -139,7 +152,7 @@ func DeleteReservation(w http.ResponseWriter, r *http.Request) {
 
 func GetReservationOfDate(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get Reservation Of Date")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 
 	params := mux.Vars(r)
 	workspaceUUID, _ := params["workspaceuuid"]
@@ -170,20 +183,7 @@ func FindReservationBetweenTime(workspaceUUID string, start int64, end int64) ([
 		bson.M{
 			"$and": []interface{}{
 				bson.M{"workspace_uuid": workspaceUUID},
-				bson.M{"$or": []interface{}{
-					bson.M{"$and": []interface{}{
-						bson.M{"start_date": bson.M{"$gte": start}}, //(data.start => start and data.start <= end)
-						bson.M{"start_date": bson.M{"$lte": end}},
-					}},
-					bson.M{"$and": []interface{}{
-						bson.M{"end_date": bson.M{"$lte": start}}, //	or (data.end => start and data.end <= end)
-						bson.M{"end_date": bson.M{"$gte": end}},
-					}},
-					bson.M{"$and": []interface{}{
-						bson.M{"start_date": bson.M{"$lte": start}}, //	or (data.start <= start and data.end >= end)
-						bson.M{"end_date": bson.M{"$gte": end}},
-					}},
-				}},
+				getTimeFilter(start, end),
 			}},
 	)
 	if err != nil {
@@ -195,4 +195,21 @@ func FindReservationBetweenTime(workspaceUUID string, start int64, end int64) ([
 	}
 
 	return reservation, len(reservation) > 0, nil
+}
+
+func getTimeFilter(start int64, end int64) bson.M {
+	return bson.M{"$or": []interface{}{
+		bson.M{"$and": []interface{}{
+			bson.M{"start_date": bson.M{"$gte": start}}, //(data.start => start and data.start <= end)
+			bson.M{"start_date": bson.M{"$lte": end}},
+		}},
+		bson.M{"$and": []interface{}{
+			bson.M{"end_date": bson.M{"$lte": start}}, //	or (data.end => start and data.end <= end)
+			bson.M{"end_date": bson.M{"$gte": end}},
+		}},
+		bson.M{"$and": []interface{}{
+			bson.M{"start_date": bson.M{"$lte": start}}, //	or (data.start <= start and data.end >= end)
+			bson.M{"end_date": bson.M{"$gte": end}},
+		}},
+	}}
 }

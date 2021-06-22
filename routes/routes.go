@@ -83,8 +83,8 @@ func getRoutes() []route {
 		{
 			Name:        "DeleteRoom",
 			Method:      http.MethodDelete,
-			Pattern:     roomPattern,
-			HandlerFunc: controllers.CreateRoom,
+			Pattern:     roomPattern + "/{uuid}",
+			HandlerFunc: controllers.DeleteRoom,
 			Role:        models.RoleAdmin,
 		},
 		{

@@ -11,7 +11,7 @@ func Member(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, err := controllers.GetCurrentUser(r)
 		if err != nil {
-			handler2.HttpErrorResponse(w, http.StatusUnauthorized, "no token set")
+			handler2.HttpErrorResponse(w, http.StatusForbidden, "no token set")
 			return
 		}
 		if user.UserRole == models.RoleMember || user.UserRole == models.RoleAdmin {
@@ -28,7 +28,7 @@ func Admin(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, err := controllers.GetCurrentUser(r)
 		if err != nil {
-			handler2.HttpErrorResponse(w, http.StatusUnauthorized, "no token set")
+			handler2.HttpErrorResponse(w, http.StatusForbidden, "no token set")
 			return
 		}
 		if user.UserRole == models.RoleAdmin {

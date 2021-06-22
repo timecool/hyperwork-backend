@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
+	"strconv"
 	"time"
 	"timecool/hyperwork/database"
 	"timecool/hyperwork/handler"
@@ -28,7 +29,7 @@ func initUserCollection() {
 
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Create User")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 	var user models.User
 	//Decode body to user
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -37,8 +38,6 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	initUserCollection()
-	database.Ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
-	usersCollection := database.DB.Collection("users")
 	_, isEmailSet, _ := GetUserByEmail(user.Email)
 	//if user exists with email then UUID length != 0 and return handler
 	if isEmailSet {
@@ -80,11 +79,10 @@ func GetCurrentUser(r *http.Request) (models.User, error) {
 
 	if ok && token.Valid {
 		user = models.User{
-			UUID:      claims["uuid"].(string),
-			Name:      claims["name"].(string),
-			UserRole:  models.Role(claims["role"].(string)),
-			Email:     claims["email"].(string),
-			LastPlace: claims["last_place"].(string),
+			UUID:     claims["uuid"].(string),
+			Name:     claims["name"].(string),
+			UserRole: models.Role(claims["role"].(string)),
+			Email:    claims["email"].(string),
 		}
 
 		return user, nil
@@ -94,8 +92,7 @@ func GetCurrentUser(r *http.Request) (models.User, error) {
 
 func GetUserByToken(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get User from Token")
-	w.Header().Add("content-type", "application")
-
+	w.Header().Add("content-type", "application/json")
 	user, err := GetCurrentUser(r)
 	//Decode body to user
 	if err != nil {
@@ -108,28 +105,84 @@ func GetUserByToken(w http.ResponseWriter, r *http.Request) {
 
 func GetUsers(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get Users")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
+	var size int64
+	var page int64
+	active := r.URL.Query().Get("active")
+	pageString := r.URL.Query().Get("page")
+	sizeString := r.URL.Query().Get("size")
 
+	if pageString == "" && sizeString == "" {
+		// size and page not set
+		// set to -1 for error handling
+		size = -1
+		page = -1
+	} else {
+		tmpSize, _ := strconv.Atoi(sizeString)
+		tmpPage, _ := strconv.Atoi(pageString)
+		page = int64(tmpPage)
+		size = int64(tmpSize)
+	}
+	var filter bson.M
+	if active == "true" {
+		//if ture show only active users
+		filter = bson.M{
+			"$or": []interface{}{
+				bson.M{"role": models.RoleMember},
+				bson.M{"role": models.RoleAdmin},
+			}}
+	} else {
+		filter = bson.M{"role": models.RoleNone}
+	}
+	var result *mongo.Cursor
+	var err error
+	skip := page * (size - 1)
 	initUserCollection()
-	// get all Users form Collection
-	result, err := usersCollection.Find(database.Ctx, bson.M{}, options.Find().SetProjection(bson.M{"password": 0}))
+
+	if page == -1 && size == -1 {
+		result, err = usersCollection.Find(database.Ctx, filter,
+			options.Find().SetProjection(bson.M{"password": 0}))
+	} else {
+		result, err = usersCollection.Find(database.Ctx, filter,
+			options.Find().SetProjection(bson.M{"password": 0}).SetLimit(size).SetSkip(skip))
+	}
+	// get Users form Collection
 	if err != nil {
 		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	var users []models.User
-
+	collectionLength, _ := usersCollection.CountDocuments(database.Ctx, filter)
 	if err := result.All(database.Ctx, &users); err != nil {
 		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	json.NewEncoder(w).Encode(users)
+	var paging models.PagingUser
+	if page != -1 && size != -1 {
+		stepsFloat := float64(collectionLength) / float64(size)
+		stepsInt := collectionLength / size
+		fmt.Println(collectionLength)
+		fmt.Println(size)
+		fmt.Println(stepsFloat)
+		fmt.Println(stepsInt)
+		var steps int64
+		if stepsFloat > float64(stepsInt) {
+			steps = stepsInt + 1
+		} else {
+			steps = stepsInt
+		}
+		paging.PagingInfo.PageNumber = page
+		paging.PagingInfo.Steps = steps
+	}
+	paging.PagingInfo.TotalItems = collectionLength
+	paging.Users = users
+	json.NewEncoder(w).Encode(paging)
 
 }
 
 func SetRole(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Update Role")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 
 	params := mux.Vars(r)
 	userUUID, _ := params["uuid"]
@@ -150,7 +203,7 @@ func SetRole(w http.ResponseWriter, r *http.Request) {
 }
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Delete User")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 	params := mux.Vars(r)
 	userUUID, err := params["uuid"]
 

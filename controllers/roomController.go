@@ -25,7 +25,7 @@ func initRoomCollection() {
 
 func CreateRoom(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Create Room")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 
 	var room models.Room
 	err := json.NewDecoder(r.Body).Decode(&room)
@@ -35,7 +35,6 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	initRoomCollection()
 	room.UUID = uuid.New().String()
-	room.Delete = false
 
 	//Save User in Collection User
 	result, _ := roomCollection.InsertOne(database.Ctx, room)
@@ -43,18 +42,16 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteRoom(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Create Room")
-	w.Header().Add("content-type", "application")
+	fmt.Println("Delete Room")
+	w.Header().Add("content-type", "application/json")
 
 	params := mux.Vars(r)
 	roomId, _ := params["uuid"]
 
 	initRoomCollection()
-	opts := options.Update().SetUpsert(true)
-	filter := bson.D{{"_id", roomId}}
-	update := bson.D{{"$set", bson.D{{"delete", true}}}}
-
-	result, err := roomCollection.UpdateOne(context.TODO(), filter, update, opts)
+	initReservationCollection()
+	result, err := roomCollection.DeleteOne(database.Ctx, bson.M{"_id": roomId})
+	reservationCollection.DeleteMany(database.Ctx, bson.M{"room_uuid": roomId})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -64,7 +61,7 @@ func DeleteRoom(w http.ResponseWriter, r *http.Request) {
 
 func GetRoom(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get Room")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 	params := mux.Vars(r)
 	roomId, _ := params["uuid"]
 
@@ -82,11 +79,13 @@ func GetRoom(w http.ResponseWriter, r *http.Request) {
 
 func GetRooms(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get Rooms")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 
 	initRoomCollection()
 	// find room on UUID
-	result, err := roomCollection.Find(database.Ctx, bson.M{"delete": false}, options.Find().SetProjection(bson.M{"workspaces": 0, "specification": 0}))
+	result, err := roomCollection.Find(
+		database.Ctx, bson.M{},
+		options.Find().SetProjection(bson.M{"workspaces": 0, "specification": 0}).SetSort(bson.M{"name": 1}))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -104,7 +103,7 @@ func GetRooms(w http.ResponseWriter, r *http.Request) {
 
 func UpdateRoom(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("UpdateWorkspaceMap")
-	w.Header().Add("content-type", "application")
+	w.Header().Add("content-type", "application/json")
 
 	params := mux.Vars(r)
 	roomUUID, _ := params["uuid"]
@@ -128,7 +127,6 @@ func UpdateRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	initRoomCollection()
 
-	var result *mongo.UpdateResult
 	update := bson.D{{"$set", bson.M{
 		"name":          newRoom.Name,
 		"description":   newRoom.Description,
@@ -137,12 +135,12 @@ func UpdateRoom(w http.ResponseWriter, r *http.Request) {
 	}}}
 
 	//Update Room
-	result, err = roomCollection.UpdateByID(database.Ctx, room.UUID, update)
+	_, err = roomCollection.UpdateByID(database.Ctx, room.UUID, update)
 	if err != nil {
 		handler.HttpErrorResponse(w, http.StatusBadGateway, err.Error())
 		return
 	}
-	json.NewEncoder(w).Encode(result)
+	json.NewEncoder(w).Encode(newRoom)
 
 }
 
@@ -151,7 +149,7 @@ func GetRoomById(id string) (models.Room, bool, error) {
 	var room models.Room
 	// find room on UUID
 	err := roomCollection.FindOne(database.Ctx, bson.M{"_id": id}).Decode(&room)
-	return room, len(room.UUID) != 0 && !room.Delete, err
+	return room, len(room.UUID) != 0, err
 }
 
 func getRoomAndWorkspaceName(roomUUID string, workspaceUUID string) (string, string) {
