@@ -7,9 +7,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"net/http"
+	"strconv"
 	"time"
 	"timecool/hyperwork/database"
 	"timecool/hyperwork/handler"
@@ -81,23 +83,75 @@ func GetRooms(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get Rooms")
 	w.Header().Add("content-type", "application/json")
 
+	var size int64
+	var page int64
+	pageString := r.URL.Query().Get("page")
+	sizeString := r.URL.Query().Get("size")
+	search := r.URL.Query().Get("search")
+
+	if pageString == "" && sizeString == "" {
+		// size and page not set
+		// set to -1 for error handling
+		size = -1
+		page = -1
+	} else {
+		tmpSize, _ := strconv.Atoi(sizeString)
+		tmpPage, _ := strconv.Atoi(pageString)
+		page = int64(tmpPage)
+		size = int64(tmpSize)
+	}
+
+	var filter bson.M
+	if search != "" {
+		// if search => search in the whole collection
+		regex := bson.M{"$regex": primitive.Regex{Pattern: search, Options: "i"}}
+		filter = bson.M{"name": regex}
+	}
+
+	var result *mongo.Cursor
+	var err error
+	skip := page * (size - 1)
+
 	initRoomCollection()
+	if page != -1 && size != -1 {
+		result, err = roomCollection.Find(
+			database.Ctx, filter,
+			options.Find().SetProjection(bson.M{"workspaces": 0, "specification": 0}).SetSort(bson.M{"name": 1}).SetLimit(size).SetSkip(skip))
+	} else {
+		result, err = roomCollection.Find(
+			database.Ctx, filter,
+			options.Find().SetProjection(bson.M{"workspaces": 0, "specification": 0}).SetSort(bson.M{"name": 1}))
+	}
 	// find room on UUID
-	result, err := roomCollection.Find(
-		database.Ctx, bson.M{},
-		options.Find().SetProjection(bson.M{"workspaces": 0, "specification": 0}).SetSort(bson.M{"name": 1}))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var room []models.Room
-
-	if err := result.All(database.Ctx, &room); err != nil {
+	var rooms []models.Room
+	collectionLength, _ := roomCollection.CountDocuments(database.Ctx, filter)
+	if err := result.All(database.Ctx, &rooms); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	json.NewEncoder(w).Encode(room)
+	var paging models.PagingRoom
+	if page != -1 && size != -1 {
+		//Calculations paging
+		stepsFloat := float64(collectionLength) / float64(size)
+		stepsInt := collectionLength / size
+		var steps int64
+		if stepsFloat > float64(stepsInt) {
+			steps = stepsInt + 1
+		} else {
+			steps = stepsInt
+		}
+		paging.PagingInfo.PageNumber = page
+		paging.PagingInfo.Steps = steps
+	}
+	paging.PagingInfo.TotalItems = collectionLength
+	paging.Rooms = rooms
+
+	json.NewEncoder(w).Encode(paging)
 
 }
 

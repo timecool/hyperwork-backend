@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
@@ -111,6 +112,7 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 	active := r.URL.Query().Get("active")
 	pageString := r.URL.Query().Get("page")
 	sizeString := r.URL.Query().Get("size")
+	search := r.URL.Query().Get("search")
 
 	if pageString == "" && sizeString == "" {
 		// size and page not set
@@ -124,7 +126,14 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 		size = int64(tmpSize)
 	}
 	var filter bson.M
-	if active == "true" {
+	if search != "" {
+		// if search => search in the whole collection
+		regex := bson.M{"$regex": primitive.Regex{Pattern: search, Options: "i"}}
+		filter = bson.M{"$or": []interface{}{
+			bson.M{"name": regex},
+			bson.M{"email": regex},
+		}}
+	} else if active == "true" {
 		//if ture show only active users
 		filter = bson.M{
 			"$or": []interface{}{
@@ -138,13 +147,12 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 	var err error
 	skip := page * (size - 1)
 	initUserCollection()
-
-	if page == -1 && size == -1 {
-		result, err = usersCollection.Find(database.Ctx, filter,
-			options.Find().SetProjection(bson.M{"password": 0}))
-	} else {
+	if page != -1 && size != -1 {
 		result, err = usersCollection.Find(database.Ctx, filter,
 			options.Find().SetProjection(bson.M{"password": 0}).SetLimit(size).SetSkip(skip))
+	} else {
+		result, err = usersCollection.Find(database.Ctx, filter,
+			options.Find().SetProjection(bson.M{"password": 0}))
 	}
 	// get Users form Collection
 	if err != nil {
@@ -159,12 +167,9 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	var paging models.PagingUser
 	if page != -1 && size != -1 {
+		//Calculations paging
 		stepsFloat := float64(collectionLength) / float64(size)
 		stepsInt := collectionLength / size
-		fmt.Println(collectionLength)
-		fmt.Println(size)
-		fmt.Println(stepsFloat)
-		fmt.Println(stepsInt)
 		var steps int64
 		if stepsFloat > float64(stepsInt) {
 			steps = stepsInt + 1
