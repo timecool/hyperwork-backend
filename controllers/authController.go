@@ -9,7 +9,6 @@ import (
 	"time"
 	"timecool/hyperwork/handler"
 	"timecool/hyperwork/models"
-	"timecool/hyperwork/util"
 )
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +72,7 @@ func CreateToken(user models.User) (string, error) {
 	atClaims["email"] = user.Email
 	atClaims["exp"] = time.Now().Add(time.Hour * 2)
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
-	token, err := at.SignedString([]byte(util.GetEnvVariable("SECRETKEY")))
+	token, err := at.SignedString([]byte("$<7o0N8H'4;jlb!%VTS#Z^uQB+B/#qu?GRRcccO]kc,(=&^Q^GFuqv{tnWWa#|d"))
 	if err != nil {
 		return "", err
 	}

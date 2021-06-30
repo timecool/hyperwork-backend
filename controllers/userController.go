@@ -18,7 +18,6 @@ import (
 	"timecool/hyperwork/database"
 	"timecool/hyperwork/handler"
 	"timecool/hyperwork/models"
-	"timecool/hyperwork/util"
 )
 
 var usersCollection *mongo.Collection
@@ -69,7 +68,7 @@ func GetCurrentUser(r *http.Request) (models.User, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(util.GetEnvVariable("SECRETKEY")), nil
+		return []byte("$<7o0N8H'4;jlb!%VTS#Z^uQB+B/#qu?GRRcccO]kc,(=&^Q^GFuqv{tnWWa#|d"), nil
 
 	})
 	if err != nil {
