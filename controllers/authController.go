@@ -39,6 +39,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		handler.HttpErrorResponse(w, http.StatusBadRequest, "User or Password wrong")
 		return
 	}
+	if userInDatabase.UserRole == "none" {
+		handler.HttpErrorResponse(w, http.StatusUnauthorized, "User not yet activated")
+		return
+	}
 	//Create JWT
 	token, err := CreateToken(userInDatabase)
 

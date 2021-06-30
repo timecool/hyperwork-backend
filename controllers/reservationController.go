@@ -142,9 +142,9 @@ func DeleteReservation(w http.ResponseWriter, r *http.Request) {
 	}
 	reservationUUID, _ := params["uuid"]
 	initReservationCollection()
-	result, err := reservationCollection.DeleteOne(database.Ctx, bson.M{"_id": reservationUUID, "user_uuid": user.UUID})
+	result, err := reservationCollection.DeleteOne(database.Ctx, bson.M{"$and": bson.M{"_id": reservationUUID, "user_uuid": user.UUID}})
 	if err != nil {
-		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
+		handler.HttpErrorResponse(w, http.StatusBadRequest, "Your Reservation is not found")
 		return
 	}
 	json.NewEncoder(w).Encode(result)
@@ -200,11 +200,11 @@ func FindReservationBetweenTime(workspaceUUID string, start int64, end int64) ([
 func getTimeFilter(start int64, end int64) bson.M {
 	return bson.M{"$or": []interface{}{
 		bson.M{"$and": []interface{}{
-			bson.M{"start_date": bson.M{"$gte": start}}, //(data.start => start and data.start <= end)
+			bson.M{"start_date": bson.M{"$gte": start}}, // (data.start >= start and data.start <= end)
 			bson.M{"start_date": bson.M{"$lte": end}},
 		}},
 		bson.M{"$and": []interface{}{
-			bson.M{"end_date": bson.M{"$lte": start}}, //	or (data.end => start and data.end <= end)
+			bson.M{"end_date": bson.M{"$lte": start}}, // or (data.end <= start and data.end >= end)
 			bson.M{"end_date": bson.M{"$gte": end}},
 		}},
 		bson.M{"$and": []interface{}{

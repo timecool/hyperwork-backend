@@ -32,6 +32,13 @@ func getRoutes() []route {
 			Role:        models.RoleNone,
 		},
 		{
+			Name:        "UpdateUser",
+			Method:      http.MethodPut,
+			Pattern:     userPattern,
+			HandlerFunc: controllers.UpdateUser,
+			Role:        models.RoleAdmin,
+		},
+		{
 			Name:        "SetUserRoles",
 			Method:      http.MethodPut,
 			Pattern:     userPattern + "/{uuid}/role",
@@ -50,6 +57,13 @@ func getRoutes() []route {
 			Method:      http.MethodGet,
 			Pattern:     userPattern + "s",
 			HandlerFunc: controllers.GetUsers,
+			Role:        models.RoleAdmin,
+		},
+		{
+			Name:        "GetUser",
+			Method:      http.MethodGet,
+			Pattern:     userPattern + "/{uuid}",
+			HandlerFunc: controllers.GetUser,
 			Role:        models.RoleAdmin,
 		},
 		{

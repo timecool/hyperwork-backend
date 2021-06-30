@@ -33,7 +33,7 @@ func GetWorkspaceByUUID(roomUUID string, workspaceUUID string) (models.Room, err
 	initRoomCollection()
 	// find room on UUID
 	err := roomCollection.FindOne(database.Ctx, bson.M{"_id": roomUUID, "workspaces._id": workspaceUUID},
-		options.FindOne().SetProjection(bson.M{"workspaces.$": 1, "name": "1"})).Decode(&room)
+		options.FindOne().SetProjection(bson.M{"workspaces.$": 1, "name": 1})).Decode(&room)
 	if err != nil {
 		return room, err
 	}

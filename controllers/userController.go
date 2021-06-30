@@ -35,14 +35,14 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	//Decode body to user
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	initUserCollection()
 	_, isEmailSet, _ := GetUserByEmail(user.Email)
 	//if user exists with email then UUID length != 0 and return handler
 	if isEmailSet {
-		http.Error(w, "Email already exists", http.StatusBadRequest)
+		handler.HttpErrorResponse(w, http.StatusBadRequest, "Email already exists")
 		return
 	}
 
@@ -91,8 +91,37 @@ func GetCurrentUser(r *http.Request) (models.User, error) {
 	return user, nil
 }
 
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Update User")
+	w.Header().Add("content-type", "application/json")
+	var user models.User
+	//Decode body to user
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	update := bson.D{{"$set", bson.M{"name": user.Name, "email": user.Email, "role": user.UserRole}}}
+	initUserCollection()
+	fmt.Println(user)
+	if user.Password != "" {
+		//Hash and Salt the password
+		hashPassword, _ := bcrypt.GenerateFromPassword([]byte(user.Password), 14)
+		user.Password = string(hashPassword)
+		update = bson.D{{"$set", bson.M{"name": user.Name, "password": user.Password, "email": user.Email, "role": user.UserRole}}}
+	}
+	if user.UserRole == "none" || user.UserRole == "member" || user.UserRole == "admin" {
+		_, err = usersCollection.UpdateByID(database.Ctx, user.UUID, update)
+		if err != nil {
+			handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
+		}
+		return
+	}
+	handler.HttpErrorResponse(w, http.StatusBadRequest, "Role not found")
+	return
+}
+
 func GetUserByToken(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Get User from Token")
 	w.Header().Add("content-type", "application/json")
 	user, err := GetCurrentUser(r)
 	//Decode body to user
@@ -104,6 +133,24 @@ func GetUserByToken(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
+func GetUser(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Get User")
+	w.Header().Add("content-type", "application/json")
+	params := mux.Vars(r)
+	userId, _ := params["uuid"]
+
+	result, isFind, err := GetUserById(userId)
+	if err != nil {
+		handler.HttpErrorResponse(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	if !isFind {
+		handler.HttpErrorResponse(w, http.StatusNotFound, "User Not Found")
+		return
+	}
+	result.Password = ""
+	json.NewEncoder(w).Encode(result)
+}
 func GetUsers(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Get Users")
 	w.Header().Add("content-type", "application/json")
@@ -233,5 +280,13 @@ func GetUserByEmail(email string) (models.User, bool, error) {
 	// find user with email
 	err := usersCollection.FindOne(database.Ctx, bson.M{"email": email}).Decode(&user)
 
+	return user, len(user.UUID) != 0, err
+}
+
+func GetUserById(id string) (models.User, bool, error) {
+	initUserCollection()
+	var user models.User
+	// find user on UUID
+	err := usersCollection.FindOne(database.Ctx, bson.M{"_id": id}).Decode(&user)
 	return user, len(user.UUID) != 0, err
 }

@@ -173,16 +173,39 @@ func UpdateRoom(w http.ResponseWriter, r *http.Request) {
 		handler.HttpErrorResponse(w, http.StatusBadGateway, err.Error())
 		return
 	}
-
-	for i, element := range newRoom.Workspaces {
-		if element.UUID == "" {
+	for i, newElement := range newRoom.Workspaces {
+		if newElement.UUID == "" {
 			newRoom.Workspaces[i].UUID = uuid.New().String()
 		}
 	}
+
+	var deleteList []string
+	//Check is workspace delete
+	for _, oldElement := range room.Workspaces {
+		isNotInNew := true
+		for _, newElement := range newRoom.Workspaces {
+			if newElement.UUID == oldElement.UUID {
+				isNotInNew = false
+			}
+		}
+		if isNotInNew {
+			deleteList = append(deleteList, oldElement.UUID)
+		}
+	}
+
+	if len(deleteList) != 0 {
+		initReservationCollection()
+		// if workspace delete, delete all reservation with workspace_uuid
+		_, err := reservationCollection.DeleteMany(database.Ctx, bson.M{"workspace_uuid": bson.M{"$in": deleteList}})
+		if err != nil {
+			handler.HttpErrorResponse(w, http.StatusBadGateway, err.Error())
+			return
+		}
+	}
+
 	initRoomCollection()
 
 	update := bson.D{{"$set", bson.M{
-		"name":          newRoom.Name,
 		"description":   newRoom.Description,
 		"workspaces":    newRoom.Workspaces,
 		"specification": newRoom.Specification,
