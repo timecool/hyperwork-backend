@@ -94,6 +94,9 @@ func GetCurrentUser(r *http.Request) (models.User, error) {
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Update User")
 	w.Header().Add("content-type", "application/json")
+	params := mux.Vars(r)
+	userUUID, _ := params["uuid"]
+
 	var user models.User
 	//Decode body to user
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -111,7 +114,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		update = bson.D{{"$set", bson.M{"name": user.Name, "password": user.Password, "email": user.Email, "role": user.UserRole}}}
 	}
 	if user.UserRole == "none" || user.UserRole == "member" || user.UserRole == "admin" {
-		_, err = usersCollection.UpdateByID(database.Ctx, user.UUID, update)
+		_, err = usersCollection.UpdateByID(database.Ctx, userUUID, update)
 		if err != nil {
 			handler.HttpErrorResponse(w, http.StatusBadRequest, err.Error())
 		}

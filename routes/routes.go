@@ -34,7 +34,7 @@ func getRoutes() []route {
 		{
 			Name:        "UpdateUser",
 			Method:      http.MethodPut,
-			Pattern:     userPattern,
+			Pattern:     userPattern + "/{uuid}",
 			HandlerFunc: controllers.UpdateUser,
 			Role:        models.RoleAdmin,
 		},
@@ -82,7 +82,7 @@ func getRoutes() []route {
 		},
 		{
 			Name:        "Logout",
-			Method:      http.MethodPost,
+			Method:      http.MethodDelete,
 			Pattern:     userPattern + "/logout",
 			HandlerFunc: controllers.Logout,
 			Role:        models.RoleMember,
