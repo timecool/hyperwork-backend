@@ -16,14 +16,30 @@ type route struct {
 	Role        models.Role
 }
 
+// base URLS
 const baseApiPattern = "/api/v1"
 const userPattern = baseApiPattern + "/user"
 const roomPattern = baseApiPattern + "/room"
 const reservationPattern = baseApiPattern + "/reservation"
 const workspacePattern = baseApiPattern + "/workspace"
 
+// return all Endpoints
 func getRoutes() []route {
 	return []route{
+		{
+			Name:        "Login",
+			Method:      http.MethodPost,
+			Pattern:     userPattern + "/login",
+			HandlerFunc: controllers.Login,
+			Role:        models.RoleNone,
+		},
+		{
+			Name:        "Logout",
+			Method:      http.MethodDelete,
+			Pattern:     userPattern + "/logout",
+			HandlerFunc: controllers.Logout,
+			Role:        models.RoleMember,
+		},
 		{
 			Name:        "CreateUser",
 			Method:      http.MethodPost,
@@ -74,20 +90,6 @@ func getRoutes() []route {
 			Role:        models.RoleAdmin,
 		},
 		{
-			Name:        "Login",
-			Method:      http.MethodPost,
-			Pattern:     userPattern + "/login",
-			HandlerFunc: controllers.Login,
-			Role:        models.RoleNone,
-		},
-		{
-			Name:        "Logout",
-			Method:      http.MethodDelete,
-			Pattern:     userPattern + "/logout",
-			HandlerFunc: controllers.Logout,
-			Role:        models.RoleMember,
-		},
-		{
 			Name:        "CreateRoom",
 			Method:      http.MethodPost,
 			Pattern:     roomPattern,
@@ -132,14 +134,14 @@ func getRoutes() []route {
 		{
 			Name:        "GetReservationOfDate",
 			Method:      http.MethodGet,
-			Pattern:     reservationPattern + "/{workspaceuuid}",
+			Pattern:     reservationPattern + "/{uuid}",
 			HandlerFunc: controllers.GetReservationOfDate,
 			Role:        models.RoleMember,
 		},
 		{
 			Name:        "GetReservationOfUser",
 			Method:      http.MethodGet,
-			Pattern:     userPattern + "/reservation/{useruuid}",
+			Pattern:     userPattern + "/reservation/{uuid}",
 			HandlerFunc: controllers.GetReservationOfUser,
 			Role:        models.RoleMember,
 		},
@@ -148,7 +150,7 @@ func getRoutes() []route {
 			Method:      http.MethodDelete,
 			Pattern:     reservationPattern + "/{uuid}",
 			HandlerFunc: controllers.DeleteReservation,
-			Role:        models.RoleNone, //Check in function
+			Role:        models.RoleNone,
 		},
 		{
 			Name:        "GetWorkspace",
@@ -159,6 +161,9 @@ func getRoutes() []route {
 		},
 	}
 }
+
+// Params router *mux.Router
+// Settings for Endpoints
 func Setup(router *mux.Router) {
 	for _, route := range getRoutes() {
 		switch route.Role {
