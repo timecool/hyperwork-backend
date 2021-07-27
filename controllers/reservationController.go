@@ -167,9 +167,10 @@ func DeleteReservation(w http.ResponseWriter, r *http.Request) {
 
 	// delete reservation by id and userid
 	// so you can only delete your own reservation
-	result, err := reservationCollection.DeleteOne(database.Ctx, bson.M{"$and": bson.M{"_id": reservationUUID, "user_uuid": user.UUID}})
+	result, err := reservationCollection.DeleteOne(database.Ctx, bson.M{"$and": []interface{}{bson.M{"_id": reservationUUID, "user_uuid": user.UUID}}})
 	if err != nil {
 		handler.HttpErrorResponse(w, http.StatusBadRequest, "Your Reservation is not found")
+		fmt.Println(err.Error())
 		return
 	}
 

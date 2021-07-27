@@ -279,7 +279,8 @@ func getRoomAndWorkspaceName(roomUUID string, workspaceUUID string) (string, str
 	// find workspace by roomUUID and workspaceUUID
 	// Settings: get only workspace name and room name
 	err := roomCollection.FindOne(database.Ctx, bson.M{"_id": roomUUID, "workspaces._id": workspaceUUID},
-		options.FindOne().SetProjection(bson.M{"workspaces.name": 1, "name": 1})).Decode(&room)
+		options.FindOne().SetProjection(bson.M{"workspaces.$": 1, "name": 1})).Decode(&room)
+
 	if err != nil {
 		return "", ""
 	}
