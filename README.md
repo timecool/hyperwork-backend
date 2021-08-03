@@ -17,6 +17,12 @@ go build timecool/hyperwork
 go run timecool/hyperwork
 ```
 
+## Start Tests
+a database connection is needed for the tests
+```sh
+go test ./... 
+```
+
 ## Author
 
 👤 **Vincent Bärtsch**

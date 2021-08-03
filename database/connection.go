@@ -3,12 +3,10 @@ package database
 import (
 	"context"
 	"fmt"
-	"log"
-	"time"
-	"timecool/hyperwork/util"
-
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
+	"time"
 )
 
 //Globle Variable for Database
@@ -18,12 +16,11 @@ var Ctx = context.TODO()
 func Connect() {
 	// Set Username and Password
 	credential := options.Credential{
-		Username: util.GetEnvVariable("MONGODB_USERNAME"),
-		Password: util.GetEnvVariable("MONGODB_PASSWORD"),
+		Username: "dev",
+		Password: "dev",
 	}
-	applyUri := fmt.Sprintf("mongodb://%s:%s/", util.GetEnvVariable("MONGODB_HOST"), util.GetEnvVariable("MONGODB_PORT"))
 	// Set client options
-	clientOptions := options.Client().ApplyURI(applyUri).SetAuth(credential)
+	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017/").SetAuth(credential)
 
 	Ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
 

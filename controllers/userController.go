@@ -324,6 +324,7 @@ func SetRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Delete User")
 	w.Header().Add("content-type", "application/json")
