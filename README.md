@@ -17,11 +17,16 @@ go build timecool/hyperwork
 go run timecool/hyperwork
 ```
 
+When the first user is created, you must first approve the member or administrator.
+```json
+db.users.updateOne({"_id" : "UUID"},{$set: { "role" : "admim"}});
+```
 ## Start Tests
 a database connection is needed for the tests
 ```sh
 go test ./... 
 ```
+
 
 ## Author
 
